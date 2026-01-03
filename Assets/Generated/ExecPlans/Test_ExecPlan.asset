@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76f888b16e6d3014b942e7b335cb242d, type: 3}
+  m_Name: Test_ExecPlan
+  m_EditorClassIdentifier: 
+  sourceGraphId: 4cdc4e44c3f784242a9277b2b4c57b9d
+  graphVersion: 1
+  planHash: 12186348462161575968
+  serializedOps:
+  - opCode: 0
+    a: 1092616192
+    b: 0
+    output: 0
+  - opCode: 4
+    a: 0
+    b: 1
+    output: 0
+  - opCode: 5
+    a: 0
+    b: 0
+    output: 0
+  numberSlotCount: 1
+  entitySlotCount: 2
+  damageSpecSlotCount: 1

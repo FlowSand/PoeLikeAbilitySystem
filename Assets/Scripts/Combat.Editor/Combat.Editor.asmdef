@@ -1,0 +1,22 @@
+{
+    "name": "Combat.Editor",
+    "rootNamespace": "Combat.Editor",
+    "references": [
+        "GUID:88b404c862cf46bba38ec004acbad6b8",
+        "GUID:ca937d03ee5dd4d699091438dc0f3ae6",
+        "GUID:a432eb0a70c5c4a37ab50d59671586f8"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "GraphProcessor.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

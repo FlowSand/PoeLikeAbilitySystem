@@ -1,0 +1,115 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d31239124948ab14e8a099800a5e7fca, type: 3}
+  m_Name: FireBall
+  m_EditorClassIdentifier: 
+  serializedNodes: []
+  nodes:
+  - rid: 2348745571991289857
+  - rid: 2348745571991289858
+  - rid: 2348745571991289859
+  - rid: 2348745571991289860
+  edges:
+  - GUID: b837b5c0-29ac-4ba4-984a-89e5e5d24a13
+    owner: {fileID: 11400000}
+    inputNodeGUID: 5580bf3c-b379-4e3f-9162-bc682eae8382
+    outputNodeGUID: c04df12a-b191-45a2-914b-4f926a557d66
+    inputFieldName: baseDamage
+    outputFieldName: output
+    inputPortIdentifier: 
+    outputPortIdentifier: 
+  - GUID: 5e426478-7764-489b-990f-e40d40eefa71
+    owner: {fileID: 11400000}
+    inputNodeGUID: bcaea51f-117e-4bdb-817d-8a8f69175a54
+    outputNodeGUID: 5580bf3c-b379-4e3f-9162-bc682eae8382
+    inputFieldName: spec
+    outputFieldName: output
+    inputPortIdentifier: 
+    outputPortIdentifier: 
+  groups: []
+  stackNodes: []
+  pinnedElements: []
+  exposedParameters: []
+  serializedParameterList: []
+  stickyNotes: []
+  nodeInspectorReference: {fileID: 0}
+  position: {x: 1809, y: -1280, z: 0}
+  scale: {x: 1.3225, y: 1.3225, z: 1}
+  graphVersion: 1
+  entryEventType: OnHit
+  skillTags: []
+  supports: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 2348745571991289857
+      type: {class: OnHitEntryNode, ns: Combat.Editor.GraphAuthoring.Nodes, asm: Combat.Editor}
+      data:
+        nodeCustomName: 
+        GUID: c0915db0-e469-4dae-812a-bf90816d373e
+        computeOrder: 0
+        position:
+          serializedVersion: 2
+          x: -1343.7935
+          y: 1314
+          width: 108
+          height: 99
+        expanded: 0
+        debug: 0
+        nodeLock: 0
+    - rid: 2348745571991289858
+      type: {class: ConstNumberNode, ns: Combat.Editor.GraphAuthoring.Nodes, asm: Combat.Editor}
+      data:
+        nodeCustomName: 
+        GUID: c04df12a-b191-45a2-914b-4f926a557d66
+        computeOrder: 1
+        position:
+          serializedVersion: 2
+          x: -1197.1085
+          y: 1314
+          width: 151
+          height: 94
+        expanded: 0
+        debug: 0
+        nodeLock: 0
+        value: 10
+    - rid: 2348745571991289859
+      type: {class: MakeDamageSpecNode, ns: Combat.Editor.GraphAuthoring.Nodes, asm: Combat.Editor}
+      data:
+        nodeCustomName: 
+        GUID: 5580bf3c-b379-4e3f-9162-bc682eae8382
+        computeOrder: 2
+        position:
+          serializedVersion: 2
+          x: -999.8527
+          y: 1191.5048
+          width: 212
+          height: 94
+        expanded: 0
+        debug: 0
+        nodeLock: 0
+        damageType: 1
+    - rid: 2348745571991289860
+      type: {class: EmitApplyDamageCommandNode, ns: Combat.Editor.GraphAuthoring.Nodes, asm: Combat.Editor}
+      data:
+        nodeCustomName: 
+        GUID: bcaea51f-117e-4bdb-817d-8a8f69175a54
+        computeOrder: 3
+        position:
+          serializedVersion: 2
+          x: -713.1665
+          y: 1314
+          width: 153
+          height: 75
+        expanded: 0
+        debug: 0
+        nodeLock: 0
