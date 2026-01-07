@@ -832,9 +832,148 @@ Editor Visualization:
 
 ---
 
-## 8. 下一步切入（Task-08 及后续）
+## 8. 已完成：Task-08（命中与伤害域模型：Hit / Damage / Resist / Crit / Ailment 基础）
 
-Task-07（Trace 系统）已完成，下一步是选择新的功能方向：
+### 8.1 实施时间
+**完成日期：** 2026-01-08
+**状态：** ✅ 已完成（域模型 + Pipeline + 单元测试）
+
+### 8.2 架构总览
+建立统一的**战斗域模型**，规范一次"命中（Hit）"从生成到结算的**全链路对象模型与结算管线**：
+
+```
+HitInstance (命中实例)
+    ↓ DamagePipeline.Resolve()
+    ├─ RollCritStep      (暴击判定)
+    ├─ ApplyResistStep   (抗性减免)
+    ├─ FinalizeStep      (最终结算)
+    ↓
+DamageResult (结算结果)
+    ↓ HealthComponent.Apply()
+单位生命值变化
+```
+
+**关键设计原则：**
+- ⚠️ 技能节点**不得直接修改 HP**
+- ⚠️ 所有随机数**必须来源于 `HitInstance.Rng`**（确定性 seed）
+- ⚠️ 标准流程：`HitInstance → DamagePipeline.Resolve() → DamageResult`
+
+### 8.3 核心实现点
+
+**Model 层（7 个文件）：**
+1. **HitFlags.cs**：位标志枚举（IsSpell, IsAttack, IsProjectile, IsAoE）
+2. **DamagePacket.cs**：多分量伤害包（Physical, Fire, Cold, Lightning, Chaos）
+   - 提供 GetValue(), SetValue(), GetTotal(), MultiplyAll(), Add() 等方法
+3. **DefenseSnapshot.cs**：目标防御快照（元素抗性 + Armor/Evasion 预留）
+4. **HitInstance.cs**：命中实例（Source, Target, Rng, HitFlags, BaseDamage, DefenseSnapshot）
+5. **DeterministicRng.cs**：确定性随机数生成器（Xorshift32 算法）
+   - 相同 seed → 相同随机序列
+6. **DamageResult.cs** ⭐修改：重新设计为支持多分量伤害（DamagePacket）
+7. **StatType.cs** ⭐修改：扩展支持暴击率、暴击倍率、元素抗性（新增 9 个 StatType）
+
+**Combat 层（8 个文件）：**
+8. **Combat/PipelineContext.cs**：Pipeline 上下文 + TraceCollector
+9. **Combat/IDamageStep.cs**：Step 接口（StepName, Execute）
+10. **Combat/DamagePipeline.cs**：抽象基类（持有 Steps 列表，提供 Resolve 方法）
+11. **Combat/StandardDamagePipeline.cs**：标准实现（组合所有 Steps）
+12. **Combat/Steps/RollCritStep.cs**：暴击判定 Step
+    - 根据施法者 CritChance Roll 暴击，成功则应用 CritMultiplier
+13. **Combat/Steps/ApplyResistStep.cs**：抗性减免 Step
+    - 公式：`damage × (1 - resist)`，支持负抗性
+14. **Combat/Steps/FinalizeStep.cs**：最终结算 Step
+    - 确保伤害不为负数（最小值为 0）
+
+**Tests（1 个文件）：**
+15. **Tests/DamagePipelineTests.cs**：单元测试（6 个测试用例）
+
+### 8.4 StatType 扩展
+
+新增以下统计类型（共 11 个，原有 2 个）：
+
+| StatType | 说明 | 默认值 |
+|----------|------|--------|
+| CritChance | 暴击率（百分比，0 ~ 100） | 0 |
+| CritMultiplier | 暴击倍率（百分比，150 = 1.5x） | 150 |
+| PhysicalResist | 物理抗性（百分比，0 ~ 100） | 0 |
+| FireResist | 火焰抗性（百分比，0 ~ 100） | 0 |
+| ColdResist | 冰霜抗性（百分比，0 ~ 100） | 0 |
+| LightningResist | 闪电抗性（百分比，0 ~ 100） | 0 |
+| ChaosResist | 混沌抗性（百分比，0 ~ 100） | 0 |
+| Armor | 护甲（预留字段） | 0 |
+| Evasion | 闪避（预留字段） | 0 |
+
+### 8.5 单元测试覆盖（6 个测试用例）
+
+| 测试用例 | 验证内容 |
+|---------|---------|
+| `Pipeline_CritMultiplier_AppliesCorrectly` | 100% 暴击率 + 200% 暴击倍率 → 伤害翻倍 |
+| `Pipeline_Resist75Percent_MitigatesCorrectly` | 100 伤害 × (1 - 0.75) = 25 |
+| `Pipeline_NegativeResist_IncreaseDamage` | 100 伤害 × (1 - (-0.5)) = 150 |
+| `Pipeline_ZeroDamage_ProducesZeroResult` | 总伤害为 0 |
+| `Pipeline_MultiComponentDamage_AccumulatesCorrectly` | 100物理 + 50火焰 + 30冰霜 = 180总伤害 |
+| `Pipeline_DeterministicRandomness_SameSeedSameResult` | 相同 seed → 相同结果 |
+
+### 8.6 Trace 集成
+
+- `PipelineTraceCollector` 收集每个 Step 的输入/输出摘要
+- `PipelineTracePoint` 记录 Step 名称、输入摘要、输出摘要
+- `DamagePipeline.Resolve()` 支持 `enableTrace` 参数
+- 与 Task-07 的 ExecutionTrace 独立，专注于伤害结算细节
+
+### 8.7 与现有系统的关系
+
+**旧系统（Task-01）：**
+- `DamageSpec`：简单的伤害规格（SourceUnitId, TargetUnitId, BaseValue, DamageType）
+- `DamageResult`：仅包含 FinalValue 和 IsCrit
+
+**新系统（Task-08）：**
+- `HitInstance`：完整的命中上下文（替换 DamageSpec 的职责）
+- `DamagePacket`：多分量伤害（扩展伤害表达能力）
+- `DamageResult`：支持多分量 + 命中/格挡标志（向后兼容扩展）
+- `DamagePipeline`：新增结算管线（统一伤害结算逻辑）
+
+**兼容性说明：**
+- `DamageSpec` 保留（ExecPlanRunner 仍使用，后续可迁移）
+- `DamageResult` 重新设计但保留 IsCrit 字段（兼容现有代码）
+- 新旧系统可并存，逐步迁移
+
+### 8.8 FAIL 条件检查（全部通过）
+
+- ✅ Runtime 不引用 `UnityEditor` / `GraphProcessor`
+- ✅ 技能节点不直接修改 HP（通过 Pipeline → Command 间接修改）
+- ✅ 随机数来源唯一（DeterministicRng，基于 seed）
+- ✅ 结算顺序确定（Step 按添加顺序执行）
+- ✅ 可单元测试（6 个测试用例覆盖核心功能）
+- ✅ 可复现（相同 seed → 相同结果）
+
+### 8.9 未实现的功能（预留）
+
+1. **Ailment 系统**（异常状态）：
+   - DamageResult 已预留 TriggeredAilments 字段
+   - 需要实现 AilmentInstance, AilmentType, ApplyAilmentStep
+
+2. **命中/闪避/格挡机制**：
+   - DamageResult 已预留 IsHit, IsBlocked 字段
+   - 需要实现 RollHitStep, RollBlockStep
+
+3. **Armor 物理减伤**：
+   - DefenseSnapshot 已预留 Armor 字段
+   - 需要实现 ApplyArmorStep
+
+4. **NGP 节点扩展**：
+   - 创建 ApplyHitNode（构造 HitInstance 并调用 DamagePipeline）
+   - 集成到 EffectGraph 作者态工作流
+
+### 8.10 文档
+
+- ✅ `.claude/Task-08-Completion.md`（完成总结）
+- ✅ `WORK_MEMORY.md`（本文档）
+
+---
+
+## 9. 下一步切入（Task-09+）
+
+Task-08（命中与伤害域模型）已完成，下一步是选择新的功能方向：
 
 ### 选项 A：Modifier 系统（Buff/Debuff）
 - 实现 ModifierSpec / ApplyModifierCommand
@@ -847,32 +986,46 @@ Task-07（Trace 系统）已完成，下一步是选择新的功能方向：
 - 实现 FindTargetsInRadius OpCode
 - 扩展 ExecPlanRunner Op Handler
 
-### 选项 C：性能优化
-- ExecPlan 缓存系统（基于 planHash）
-- Bake 增量构建（跳过未变更的 Graph）
-- SlotStorage 对象池优化
+### 选项 C：实现 Ailment 系统（异常状态）
+- 实现 AilmentInstance, AilmentType
+- 实现 ApplyAilmentStep（集成到 DamagePipeline）
+- NGP 节点扩展（EmitApplyAilmentNode）
 
-### 选项 D：高级构筑功能
-- 实现 Fork / Chain OpCode（多重投射物/连锁）
-- 装备词缀集成到 BuildContext
-- 天赋树修饰系统
+### 选项 D：扩展 NGP 节点（集成 HitInstance 到编辑器工作流）
+- 创建 ApplyHitNode（构造 HitInstance 并调用 DamagePipeline）
+- 集成到 EffectGraph 作者态工作流
+- 替换现有的 EmitApplyDamageCommand 节点
 
-### 短期（完成 Task-07 验收）
-- Unity Play Mode 测试（enableTracing: true，触发 OnHitEvent）
-- 验证 Trace JSON 导出正确
-- 验证 TraceViewer 加载并高亮节点
-
-### 中期（扩展 Task-07 功能）
-- 实现 NGP 节点视觉高亮
-- 实现 Slot 值捕获与显示
-- Trace 对比工具（Diff UI）
-
-### 长期（后续任务）
-- Task-08+：根据上述选项选择推进方向
+### 选项 E：实现命中/闪避/格挡机制
+- 实现 RollHitStep, RollBlockStep
+- 集成到 StandardDamagePipeline
+- 扩展 StatType（HitChance, EvadeChance, BlockChance）
 
 ---
 
-## 9. 更新日志
+## 10. 更新日志
+
+### 2026-01-08（Task-08 完成）
+**完成内容：**
+- ✅ 建立统一的战斗域模型（HitInstance, DamagePacket, DefenseSnapshot, DamageResult）
+- ✅ 实现 DamagePipeline 结算管线（3 个 Steps：RollCrit, ApplyResist, Finalize）
+- ✅ 扩展 StatType（新增 9 个统计类型：暴击、抗性、Armor/Evasion）
+- ✅ 实现确定性随机数生成器（DeterministicRng，Xorshift32 算法）
+- ✅ 单元测试（6 个测试用例，覆盖暴击、抗性、多分量、确定性随机）
+
+**新增文件：**
+- Model 层（5 个）：HitFlags.cs, DamagePacket.cs, DefenseSnapshot.cs, HitInstance.cs, DeterministicRng.cs
+- Combat 层（8 个）：PipelineContext.cs, IDamageStep.cs, DamagePipeline.cs, StandardDamagePipeline.cs, RollCritStep.cs, ApplyResistStep.cs, FinalizeStep.cs
+- Tests（1 个）：DamagePipelineTests.cs
+
+**修改文件：**
+- Model（2 个）：DamageResult.cs（重新设计）, StatType.cs（扩展 9 个 StatType）
+- 文档（2 个）：WORK_MEMORY.md, .claude/Task-08-Completion.md
+
+**下一步：**
+- Task-09+：选择新功能方向（Ailment 系统 / NGP 节点扩展 / 命中闪避格挡机制）
+
+
 
 ### 2026-01-03（Task-07 完成）
 **完成内容：**
